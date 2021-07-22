@@ -8,7 +8,7 @@ import pandas as pd
 import time
 import logging
 
-logging.basicConfig(filename="log.txt", level=logging.INFO)
+logging.basicConfig(filename="log.txt", level=logging.ERROR)
 
 
 class Kiwoom:
@@ -16,7 +16,6 @@ class Kiwoom:
         self.ocx = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
         self.connected = False              # for login event
         self.received = False               # for tr event
-        self.next = 0                       # for tr event
         self.tr_items = None                # tr input/output items
         self.tr_data = None                 # tr output data
         self.tr_record = None
@@ -73,6 +72,7 @@ class Kiwoom:
 
             # data to DataFrame
             df = pd.DataFrame(data=data_list, columns=items)
+
             self.tr_data = df
             self.received = True
         except:
@@ -330,37 +330,26 @@ class Kiwoom:
         lines = parser.read_enc(trcode)
         self.tr_items = parser.parse_dat(trcode, lines)
         self.tr_record = kwargs["output"]
+        next = kwargs["next"]
 
         # set input
         for id in kwargs:
             if id.lower() != "output" and id.lower() != "next":
                 self.SetInputValue(id, kwargs[id])
 
-        # Initial
-        self.tr_remained = True
-
-        dfs = []
-        while self.tr_remained:
-            if self.tr_remained and not self.received:
-                self.next = 0
-            else:
-                self.next = 2
-            # next = kwargs["next"]
-            # initialize
-            # self.received = False
-            # self.tr_remained = False
-
-            # request
-            self.CommRqData(trcode, trcode, self.next, "0101")
-            while not self.received:
-                pythoncom.PumpWaitingMessages()
-            dfs.append(self.tr_data)
-
-        dfs = pd.concat(dfs)
-        self.tr_data = None
+        # initialize
         self.received = False
+        self.tr_remained = False
 
-        return dfs
+        # request
+        if trcode == "optkwfid":
+            self.CommKwRqData(kwargs["종목코드"], 0, len(kwargs["종목코드"].split(';')), 0, trcode, "0101")
+        else:
+            self.CommRqData(trcode, trcode, next, "0101")
+        while not self.received:
+            pythoncom.PumpWaitingMessages()
+
+        return self.tr_data
 
     def SetRealReg(self, screen, code_list, fid_list, real_type):
         ret = self.ocx.dynamicCall("SetRealReg(QString, QString, QString, QString)", screen, code_list, fid_list, real_type)
@@ -409,38 +398,7 @@ class Kiwoom:
         self.ocx.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
                              [rqname, screen, accno, order_type, code, quantity, price, hoga, order_no])
         # 주문 후 0.2초 대기
-        time.sleep(0.2)
-
-    @staticmethod
-    def change_format(data):
-        strip_data = data.lstrip('-0')
-        if strip_data == '':
-            strip_data = '0'
-
-        try:
-            format_data = format(int(strip_data), ',d')
-        except:
-            format_data = format(float(strip_data))
-
-        if data.startswith('-'):
-            format_data = '-' + format_data
-
-        return format_data
-
-    @staticmethod
-    def change_format2(data): # 수익률 포맷
-        strip_data = data.lstrip('-0')
-
-        if strip_data == '':
-            strip_data = '0'
-
-        if strip_data.startswith('.'):
-            strip_data = '0' + strip_data
-
-        if data.startswith('-'):
-            strip_data = '-' + strip_data
-
-        return strip_data
+        # time.sleep(0.2)
 
 
 if not QApplication.instance():
