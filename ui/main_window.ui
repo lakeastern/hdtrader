@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1254</width>
-    <height>811</height>
+    <height>776</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -432,6 +432,9 @@
        <height>271</height>
       </rect>
      </property>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>110</number>
+     </attribute>
      <column>
       <property name="text">
        <string>종목코드</string>
@@ -455,6 +458,16 @@
      <column>
       <property name="text">
        <string>평가금액</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>구분</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>매매수량</string>
       </property>
      </column>
      <column>
@@ -495,7 +508,7 @@
        <x>216</x>
        <y>300</y>
        <width>41</width>
-       <height>31</height>
+       <height>28</height>
       </rect>
      </property>
      <property name="text">
@@ -511,7 +524,7 @@
        <x>272</x>
        <y>300</y>
        <width>41</width>
-       <height>31</height>
+       <height>28</height>
       </rect>
      </property>
      <property name="text">
@@ -527,11 +540,11 @@
        <x>373</x>
        <y>300</y>
        <width>41</width>
-       <height>31</height>
+       <height>28</height>
       </rect>
      </property>
      <property name="text">
-      <string>50</string>
+      <string>100</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -632,6 +645,35 @@
        <string>매도매수</string>
       </property>
      </item>
+    </widget>
+    <widget class="QLabel" name="label_4">
+     <property name="geometry">
+      <rect>
+       <x>120</x>
+       <y>100</y>
+       <width>41</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>상위</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_rank_meme">
+     <property name="geometry">
+      <rect>
+       <x>160</x>
+       <y>100</y>
+       <width>41</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>50</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
     </widget>
    </widget>
   </widget>

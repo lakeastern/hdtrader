@@ -398,7 +398,7 @@ class Kiwoom:
         self.ocx.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
                              [rqname, screen, accno, order_type, code, quantity, price, hoga, order_no])
         # 주문 후 0.2초 대기
-        # time.sleep(0.2)
+        time.sleep(0.2)
 
 
 if not QApplication.instance():

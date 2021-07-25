@@ -32,7 +32,14 @@ class MyWindow(QMainWindow, form_class):
         self.kiwoom.CommConnect()
         self.myInfo = MyInfo()
 
+        if self.kiwoom.GetLoginInfo("GetServerGubun") == "1":
+            self.server_gubun = "모의투자"
+        else:
+            self.server_gubun = "실제운영"
+
         # portfolio file
+        self.account = None
+        self.secret = None
         self.fname = None
         self.fname_pf = None
         self.total_list = None
@@ -56,12 +63,7 @@ class MyWindow(QMainWindow, form_class):
 
         accounts_list = self.kiwoom.GetLoginInfo("ACCNO")
         self.comboBox_account.addItems(accounts_list)
-        self.account = self.comboBox_account.currentText()
-        try:
-            self.secret = self.myInfo.account[self.account]
-        except KeyError:
-            self.secret = '0000'
-        print("계좌번호 : {}".format(self.account))
+        self.account_update()
 
         QTest.qWait(1000)
 
@@ -72,6 +74,14 @@ class MyWindow(QMainWindow, form_class):
         self.btn_file_load.clicked.connect(self.btn_file_load_clicked)
         self.pushButton_order_auto.clicked.connect(self.send_order_auto)
         self.pushButton_get_portfolio.clicked.connect(self.get_portfolio)
+
+    def account_update(self):
+        self.account = self.comboBox_account.currentText()
+        try:
+            self.secret = self.myInfo.account[self.account]
+        except KeyError:
+            self.secret = '0000'
+        print("계좌번호 : {}".format(self.account))
 
     def timeout(self):
         current_time = QTime.currentTime()
@@ -89,7 +99,6 @@ class MyWindow(QMainWindow, form_class):
     def timeout2(self):
         if self.checkBox_check_balance_real.isChecked():
             self.check_balance()
-
 
     def code_changed(self):
         code = self.lineEdit_code.text()
@@ -157,6 +166,8 @@ class MyWindow(QMainWindow, form_class):
             qtable.resizeRowsToContents()
 
     def check_balance(self):
+        self.account_update()
+
         # balance
         self.my_comment = "잔고 조회 중..."
         opw00001 = self.my_block_request("opw00001",
@@ -171,11 +182,12 @@ class MyWindow(QMainWindow, form_class):
                                          비밀번호입력매체구분="00",
                                          조회구분="1",
                                          output="계좌평가결과")
-
-        self.balance = pd.concat([opw00001[['d+2추정예수금']],
-                                  opw00018.iloc[[0]][['총매입금액', '총평가금액', '총평가손익금액', '총수익률(%)', '추정예탁자산']]],
-                                 axis=1)
-        # print(self.balance)
+        balance_merge = pd.concat([opw00001[['d+2추정예수금']],
+                                   opw00018.iloc[[0]][['총매입금액', '총평가금액', '총평가손익금액', '총수익률(%)', '추정예탁자산']]],
+                                  axis=1)
+        if self.server_gubun == "실제운영":
+            balance_merge['총수익률(%)'] = balance_merge['총수익률(%)'] / 100
+        self.balance = balance_merge
         self.fill_QTable(self.balance, self.tableWidget_jango, vertical=True)
         self.my_comment = "잔고 조회 완료, 보유종목현황 조회 중..."
 
@@ -189,7 +201,8 @@ class MyWindow(QMainWindow, form_class):
 
         opw00018m['종목코드'] = opw00018m['종목번호'].apply(self.get_code6)
         self.item_list = opw00018m[['종목코드', '종목명', '보유수량', '매입가', '현재가', '평가손익', '수익률(%)']]
-        # print(self.item_list)
+        if self.server_gubun == "실제운영":
+            self.item_list['수익률(%)'] = self.item_list['수익률(%)'] / 100
         self.fill_QTable(self.item_list, self.tableWidget_stock)
         self.my_comment = "잔고 및 보유종목현황 조회 완료"
 
@@ -217,17 +230,19 @@ class MyWindow(QMainWindow, form_class):
         if self.portfolio_check is None:
             self.portfolio_check = self.portfolio[['종목코드']].copy()
             self.portfolio_check['완료'] = ""
+        self.portfolio['구분'] = ""
+        self.portfolio['매매수량'] = ""
         self.portfolio = pd.merge(self.portfolio, self.portfolio_check,
                                   how='left', on='종목코드')
-
-        # print(self.portfolio)
+        max_row = int(self.lineEdit_rank_meme.text())
+        self.portfolio = self.portfolio.iloc[:max_row]
+        print(self.portfolio)
         self.fill_QTable(self.portfolio, self.tableWidget_portfolio)
         self.my_comment = "포트폴리오 조회 완료"
         return self.portfolio
 
     def btn_file_load_clicked(self):
         self.fname = QFileDialog.getOpenFileName(self)
-        print(self.fname)
         self.check_balance()
         self.check_portfolio()
 
@@ -266,6 +281,7 @@ class MyWindow(QMainWindow, form_class):
                                              self.total_list['매매수량'], self.total_list['최대매매수량'])
         self.total_list = pd.merge(self.total_list, self.portfolio_check, how='left', on='종목코드')
         self.total_list['완료'] = self.total_list['완료'].replace(np.nan, "")
+        self.total_list.to_excel("temp.xlsx")
 
         if order_type_auto in ['매도', '매도매수']:
             # 1. 보유종목 중 포트폴리오 미포함 종목 매도
@@ -277,8 +293,9 @@ class MyWindow(QMainWindow, form_class):
                 for i in range(0, sell_list.shape[0]):
                     code = sell_list['종목코드'].iloc[i]
                     num = int(sell_list['최종매매수량'].iloc[i])
-                    self.kiwoom.SendOrder("send_order_req", "0101", self.account, 2, code, num, 0, "03", "")
-                    print("{} {}주 매도주문 완료".format(sell_list['종목명'].iloc[i], num))
+                    if num > 0:
+                        self.kiwoom.SendOrder("send_order_req", "0101", self.account, 2, code, num, 0, "03", "")
+                        print("{} {}주 매도주문 완료".format(sell_list['종목명'].iloc[i], num))
                     if sell_list['매매수량'].iloc[i] == sell_list['최종매매수량'].iloc[i]:
                         self.total_list.loc[self.total_list['종목코드'] == code, '완료'] = '완료'
 
@@ -291,8 +308,9 @@ class MyWindow(QMainWindow, form_class):
                 for i in range(0, sell_list2.shape[0]):
                     code = sell_list2['종목코드'].iloc[i]
                     num = int(sell_list2['최종매매수량'].iloc[i])
-                    self.kiwoom.SendOrder("send_order_req", "0101", self.account, 2, code, num, 0, "03", "")
-                    print("{} {}주 매도주문 완료".format(sell_list2['종목명'].iloc[i], num))
+                    if num > 0:
+                        self.kiwoom.SendOrder("send_order_req", "0101", self.account, 2, code, num, 0, "03", "")
+                        print("{} {}주 매도주문 완료".format(sell_list2['종목명'].iloc[i], num))
                     if sell_list2['매매수량'].iloc[i] == sell_list2['최종매매수량'].iloc[i]:
                         self.portfolio_check.loc[self.portfolio_check['종목코드'] == code, '완료'] = '완료'
                         self.portfolio.loc[self.portfolio['종목코드'] == code, '완료'] = '완료'
@@ -302,28 +320,25 @@ class MyWindow(QMainWindow, form_class):
             self.my_comment = "자동매매 : 포트폴리오 종목 중 기준가 미달 종목 매수 전 10초 대기 중..."
             QTest.qWait(10000)
 
-
-
         if order_type_auto in ['매수', '매도매수']:
             # 3. 포트폴리오 종목 중 기준가 미달 종목 매수
             self.my_comment = "자동매매 : 포트폴리오 종목 중 기준가 미달 종목 매수 중..."
             QTest.qWait(1000)
             buy_list = self.total_list.loc[(self.total_list['구분'] == '매수') & (self.total_list['완료'] != '완료')]
-
             if len(buy_list) != 0:
                 for i in range(0, buy_list.shape[0]):
                     code = buy_list['종목코드'].iloc[i]
                     num = int(buy_list['최종매매수량'].iloc[i])
-                    self.kiwoom.SendOrder("send_order_req", "0101", self.account, 1, code, num, 0, "03", "")
-                    print("{} {}주 매수주문 완료".format(buy_list['종목명'].iloc[i], num))
-                    # print(self.portfolio_check.loc[self.portfolio_check['종목코드'] == code, '완료'])
+                    if num > 0:
+                        self.kiwoom.SendOrder("send_order_req", "0101", self.account, 1, code, num, 0, "03", "")
+                        print("{} {}주 매수주문 완료".format(buy_list['종목명'].iloc[i], num))
                     if buy_list['매매수량'].iloc[i] == buy_list['최종매매수량'].iloc[i]:
                         self.portfolio_check.loc[self.portfolio_check['종목코드'] == code, '완료'] = '완료'
                         self.portfolio.loc[self.portfolio['종목코드'] == code, '완료'] = '완료'
                         self.total_list.loc[self.total_list['종목코드'] == code, '완료'] = '완료'
-            self.fill_QTable(self.portfolio, self.tableWidget_portfolio)
 
-        print(self.total_list[['종목코드', '종목명', '보유수량', '현재가', '평가금액', '구분', '최종매매수량', '완료']])
+        self.fill_QTable(self.total_list[['종목코드', '종목명', '보유수량', '현재가', '평가금액', '구분', '최종매매수량', '완료']],
+                         self.tableWidget_portfolio)
 
         self.portfolio_check = self.total_list[['종목코드', '완료']].copy()
         self.my_comment = "자동매매 완료: 전량매도({} / {}), 부분매도({} / {}), 매수({} / {})".format(
@@ -355,7 +370,7 @@ class MyWindow(QMainWindow, form_class):
         # 시총 하위 20%
         def get_cap_range(value_df, ratio=[0.8, 1.0]):
             self.my_comment = "포트폴리오 분석 시작"
-            QTest.qWait(200)
+            QTest.qWait(1000)
             temp_df = value_df
             temp_df['시가총액'] = pd.to_numeric(temp_df['시가총액'])
             temp_df = temp_df.sort_values(by='시가총액', ascending=False)
@@ -369,12 +384,14 @@ class MyWindow(QMainWindow, form_class):
         # fnguide 데이터 수집하기
         total_value = pd.DataFrame()
         for num, code in enumerate(code_data_filter.index):
-            if num % 10 == 0:
-                print(code, num + 1, "/", code_data_filter.shape[0])
-                self.my_comment = "포트폴리오 분석 중 : {} {} / {}".format(code, num + 1, code_data_filter.shape[0])
-                QTest.qWait(200)
+            if num % 1 == 0:
+                print("포트폴리오 분석 중 : [{} / {}] {} {}".format(
+                    num + 1, code_data_filter.shape[0], code[1:], code_data.iloc[num, 0]))
+                self.my_comment = "포트폴리오 분석 중 : [{} / {}] {} {}".format(
+                    num + 1, code_data_filter.shape[0], code[1:], code_data.iloc[num, 0])
+
             try:
-                time.sleep(1)
+                QTest.qWait(1000)
                 try:
                     cap = pq.make_cap_dataframe(code)
                     fs_df = pq.make_fs_dataframe(code)
@@ -413,7 +430,7 @@ class MyWindow(QMainWindow, form_class):
             except UnboundLocalError:
                 continue
         total_value['적정가'] = round((total_value['BPS'].astype('float') * (1 + total_value['ROE3년'] * 0.01 - 0.05 * (
-                    (100 + total_value['부채비율3년']) / 100) ** 0.5) ** 10).astype(float), -1)
+                (100 + total_value['부채비율3년']) / 100) ** 0.5) ** 10).astype(float), -1)
 
         # # super value 전략 구현하기
         value_list = ['1/PSR', '1/PER', '1/PBR', '1/PCR']
