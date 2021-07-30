@@ -1,6 +1,8 @@
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QAxContainer import *
+from PyQt5.QtCore import *
+from .config.errorCode import *
 import pythoncom
 import datetime
 from pykiwoom import parser
@@ -8,12 +10,15 @@ import pandas as pd
 import time
 import logging
 
-logging.basicConfig(filename="log.txt", level=logging.ERROR)
-
+logging.basicConfig(filename="log.txt", level=logging.INFO,
+                    format='%(asctime)s | %(levelname)-8s | %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 class Kiwoom:
     def __init__(self, login=False):
         self.ocx = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
+        self._set_event_loops()
+        self._set_signals_slots()
         self.connected = False              # for login event
         self.received = False               # for tr event
         self.tr_items = None                # tr input/output items
@@ -21,15 +26,26 @@ class Kiwoom:
         self.tr_record = None
         self.tr_remained = False
         self.condition_loaded = False
-        self._set_signals_slots()
 
         if login:
             self.CommConnect()
 
+    def _set_event_loops(self):
+        self.login_event_loop = QEventLoop()
+
+    def _set_signals_slots(self):
+        self.ocx.OnEventConnect.connect(self._handler_login)
+        self.ocx.OnReceiveTrData.connect(self._handler_tr)
+        self.ocx.OnReceiveConditionVer.connect(self._handler_condition_load)
+        self.ocx.OnReceiveTrCondition.connect(self._handler_tr_condition)
+        self.ocx.OnReceiveMsg.connect(self._handler_msg)
+        self.ocx.OnReceiveChejanData.connect(self._handler_chejan)
+
     def _handler_login(self, err_code):
-        logging.info(f"hander login {err_code}")
-        if err_code == 0:
-            self.connected = True
+        logging.info(f"handler login {errors(err_code)[1]}")
+        self.login_event_loop.exit()
+        # if err_code == 0:
+        #     self.connected = True
 
     def _handler_condition_load(self, ret, msg):
         if ret == 1:
@@ -84,14 +100,6 @@ class Kiwoom:
     def _handler_chejan(self, gubun, item_cnt, fid_list):
         logging.info(f"OnReceiveChejanData {gubun} {item_cnt} {fid_list}")
 
-    def _set_signals_slots(self):
-        self.ocx.OnEventConnect.connect(self._handler_login)
-        self.ocx.OnReceiveTrData.connect(self._handler_tr)
-        self.ocx.OnReceiveConditionVer.connect(self._handler_condition_load)
-        self.ocx.OnReceiveTrCondition.connect(self._handler_tr_condition)
-        self.ocx.OnReceiveMsg.connect(self._handler_msg)
-        self.ocx.OnReceiveChejanData.connect(self._handler_chejan)
-
     #-------------------------------------------------------------------------------------------------------------------
     # OpenAPI+ 메서드
     #-------------------------------------------------------------------------------------------------------------------
@@ -102,9 +110,10 @@ class Kiwoom:
         :return: None
         """
         self.ocx.dynamicCall("CommConnect()")
-        if block:
-            while not self.connected:
-                pythoncom.PumpWaitingMessages()
+        self.login_event_loop.exec_()
+        # if block:
+        #     while not self.connected:
+        #         pythoncom.PumpWaitingMessages()
 
     def CommRqData(self, rqname, trcode, next, screen):
         """

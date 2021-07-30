@@ -1,6 +1,3 @@
-import sys
-
-
 from mykiwoom.kiwoom import *
 from config.myInfo import *
 from PyQt5.QtWidgets import *
@@ -11,12 +8,8 @@ import numpy as np
 
 import requests
 import pandas as pd
-import python_quant_super_value as pq
+from quantpython import quantpython as qp
 import time
-import bs4
-import urllib.parse
-import matplotlib.pyplot as plt
-import numpy
 from pykrx import stock
 from datetime import datetime
 
@@ -82,6 +75,7 @@ class MyWindow(QMainWindow, form_class):
         except KeyError:
             self.secret = '0000'
         print("계좌번호 : {}".format(self.account))
+        logging.info("계좌번호 : {}".format(self.account))
 
     def timeout(self):
         current_time = QTime.currentTime()
@@ -393,14 +387,14 @@ class MyWindow(QMainWindow, form_class):
             try:
                 QTest.qWait(1000)
                 try:
-                    cap = pq.make_cap_dataframe(code)
-                    fs_df = pq.make_fs_dataframe(code)
-                    fhd_df = pq.make_fhd_dataframe(code)
+                    cap = qp.make_cap_dataframe(code)
+                    fs_df = qp.make_fs_dataframe(code)
+                    fhd_df = qp.make_fhd_dataframe(code)
                 except requests.exceptions.Timeout:
                     time.sleep(60)
-                    cap = pq.make_cap_dataframe(code)
-                    fs_df = pq.make_fs_dataframe(code)
-                    fhd_df = pq.make_fhd_dataframe(code)
+                    cap = qp.make_cap_dataframe(code)
+                    fs_df = qp.make_fs_dataframe(code)
+                    fhd_df = qp.make_fhd_dataframe(code)
                 except ValueError:
                     continue
                 except KeyError:
@@ -435,7 +429,7 @@ class MyWindow(QMainWindow, form_class):
         # # super value 전략 구현하기
         value_list = ['1/PSR', '1/PER', '1/PBR', '1/PCR']
         value_df = total_value
-        value_combo = pq.value_combo(value_df, value_list, portfolio_rank)
+        value_combo = qp.value_combo(value_df, value_list, portfolio_rank)
         value_combo.to_excel(self.fname_pf[0])
         self.my_comment = "포트폴리오 분석 완료 (경로 : {})".format(self.fname_pf[0])
 
@@ -507,8 +501,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     myWindow = MyWindow()
     myWindow.show()
-
-    # balance, item_list = myWindow.check_balance()
-    # portfolio = myWindow.btn_file_load_clicked()
-
     app.exec_()
