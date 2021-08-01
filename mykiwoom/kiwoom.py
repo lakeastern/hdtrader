@@ -32,6 +32,7 @@ class Kiwoom:
 
     def _set_event_loops(self):
         self.login_event_loop = QEventLoop()
+        self.tr_event_loop = QEventLoop()
 
     def _set_signals_slots(self):
         self.ocx.OnEventConnect.connect(self._handler_login)
@@ -91,6 +92,7 @@ class Kiwoom:
 
             self.tr_data = df
             self.received = True
+            self.tr_event_loop.exit()
         except:
             pass
 
@@ -355,8 +357,9 @@ class Kiwoom:
             self.CommKwRqData(kwargs["종목코드"], 0, len(kwargs["종목코드"].split(';')), 0, trcode, "0101")
         else:
             self.CommRqData(trcode, trcode, next, "0101")
-        while not self.received:
-            pythoncom.PumpWaitingMessages()
+        self.tr_event_loop.exec_()
+        # while not self.received:
+        #     pythoncom.PumpWaitingMessages()
 
         return self.tr_data
 

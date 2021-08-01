@@ -1,5 +1,5 @@
 log.txt
 __pycache__/
 .idea/
-config/
+config/myInfo.py
 qp_data/

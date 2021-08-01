@@ -176,11 +176,11 @@ class MyWindow(QMainWindow, form_class):
                                          비밀번호입력매체구분="00",
                                          조회구분="1",
                                          output="계좌평가결과")
-        balance_merge = pd.concat([opw00001[['d+2추정예수금']],
+        balance_merge = pd.concat([opw00001.loc[:, ['d+2추정예수금']],
                                    opw00018.iloc[[0]][['총매입금액', '총평가금액', '총평가손익금액', '총수익률(%)', '추정예탁자산']]],
                                   axis=1)
         if self.server_gubun == "실제운영":
-            balance_merge['총수익률(%)'] = balance_merge['총수익률(%)'] / 100
+            balance_merge.loc[:, '총수익률(%)'] = balance_merge.loc[:, '총수익률(%)'] / 100
         self.balance = balance_merge
         self.fill_QTable(self.balance, self.tableWidget_jango, vertical=True)
         self.my_comment = "잔고 조회 완료, 보유종목현황 조회 중..."
@@ -194,13 +194,13 @@ class MyWindow(QMainWindow, form_class):
                                           output="계좌평가잔고개별합산")
 
         opw00018m['종목코드'] = opw00018m['종목번호'].apply(self.get_code6)
-        self.item_list = opw00018m[['종목코드', '종목명', '보유수량', '매입가', '현재가', '평가손익', '수익률(%)']]
+        self.item_list = opw00018m.loc[:, ['종목코드', '종목명', '보유수량', '매입가', '현재가', '평가손익', '수익률(%)']]
         if self.server_gubun == "실제운영":
-            self.item_list['수익률(%)'] = self.item_list['수익률(%)'] / 100
+            self.item_list.loc[:, '수익률(%)'] = self.item_list.loc[:, '수익률(%)'] / 100
         self.fill_QTable(self.item_list, self.tableWidget_stock)
         self.my_comment = "잔고 및 보유종목현황 조회 완료"
 
-        return self.balance, self.item_list
+        # return self.balance, self.item_list
 
     def check_portfolio(self):
         self.my_comment = "포트폴리오 불러오는 중..."
