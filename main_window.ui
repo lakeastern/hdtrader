@@ -19,10 +19,6 @@
   <property name="windowTitle">
    <string>HdTrader v0.0</string>
   </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>hdtrader_icon.ico</normaloff>hdtrader_icon.ico</iconset>
-  </property>
   <property name="unifiedTitleAndToolBarOnMac">
    <bool>false</bool>
   </property>

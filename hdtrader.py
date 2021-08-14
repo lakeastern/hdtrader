@@ -530,6 +530,7 @@ class MyWindow(QMainWindow, form_class):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QtGui.QIcon(resource_path('hdtrader_icon.ico')))
     myWindow = MyWindow()
     myWindow.show()
     app.exec_()
