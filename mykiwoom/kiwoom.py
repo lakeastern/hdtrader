@@ -43,7 +43,7 @@ class Kiwoom:
         self.ocx.OnReceiveChejanData.connect(self._handler_chejan)
 
     def _handler_login(self, err_code):
-        logging.info(f"handler login {errors(err_code)[1]}")
+        # logging.info(f"handler login {errors(err_code)[1]}")
         self.login_event_loop.exit()
         # if err_code == 0:
         #     self.connected = True
@@ -58,7 +58,7 @@ class Kiwoom:
         self.tr_condition_loaded= True
 
     def _handler_tr(self, screen, rqname, trcode, record, next):
-        logging.info(f"OnReceiveTrData {screen} {rqname} {trcode} {record} {next}")
+        # logging.info(f"OnReceiveTrData {screen} {rqname} {trcode} {record} {next}")
         try:
             record = None
             items = None
@@ -97,10 +97,12 @@ class Kiwoom:
             pass
 
     def _handler_msg(self, screen, rqname, trcode, msg):
-        logging.info(f"OnReceiveMsg {screen} {rqname} {trcode} {msg}")
+        pass
+        # logging.info(f"OnReceiveMsg {screen} {rqname} {trcode} {msg}")
 
     def _handler_chejan(self, gubun, item_cnt, fid_list):
-        logging.info(f"OnReceiveChejanData {gubun} {item_cnt} {fid_list}")
+        pass
+        # logging.info(f"OnReceiveChejanData {gubun} {item_cnt} {fid_list}")
 
     #-------------------------------------------------------------------------------------------------------------------
     # OpenAPI+ 메서드

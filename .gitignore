@@ -3,3 +3,6 @@ __pycache__/
 .idea/
 config/myInfo.py
 qp_data/
+build/
+dist/
+hdtrader.spec
